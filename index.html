@@ -143,11 +143,18 @@
 
       element.innerHTML = ''; // Limpa conteúdo anterior
 
-      // Garante que as opções para toLocaleString estejam definidas
-      var defaultOptions = { maximumFractionDigits: 0 }; // Padrão sem casas decimais
-      options = Object.assign({}, defaultOptions, options); // Mescla as opções
+      // **A CORREÇÃO ESTÁ AQUI**
+      // Substituímos Object.assign por um método manual para compatibilidade com navegadores antigos
+      var finalOptions = { maximumFractionDigits: 0 }; // Padrão sem casas decimais
+      if (options) {
+        for (var key in options) {
+          if (Object.prototype.hasOwnProperty.call(options, key)) {
+            finalOptions[key] = options[key];
+          }
+        }
+      }
 
-      var formattedNumberStr = number.toLocaleString('pt-BR', options);
+      var formattedNumberStr = number.toLocaleString('pt-BR', finalOptions);
 
       for (var i = 0; i < formattedNumberStr.length; i++) {
         var char = formattedNumberStr[i];
