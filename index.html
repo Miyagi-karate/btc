@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>BTC Painel</title>
+
+  <!-- Tags para experiência de tela cheia (Web App Mode) -->
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+
+  <!-- Fontes: Poppins para o placar, Poppins (mantida caso queira reverter/usar em outro lugar) e sans-serif como fallback -->
+   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@700&display=swap" rel="stylesheet">
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      background-color: #000; /* Fundo geral preto do painel */
+      color: white;
+      font-family: sans-serif; /* Fonte padrão para outras células */
+      width: 100vw;
+      height: 100vh;
+      overflow: hidden;
+    }
+    body {
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+    }
+
+    .cell {
+      flex: 1;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-size: 3.45em; /* Aumentado em 15% para USD/BRL, BTC/BRL, Bloco */
+      font-weight: bold;
+      border: 1px solid #222;
+      text-align: center;
+      padding: 10px;
+      box-sizing: border-box;
+      line-height: 1.1;
+    }
+    /* Cores para as outras células */
+    .green { color: #00ff66; }
+    .light-orange { color: #ffa500; }
+    .blue { color: #66ccff; }
+
+    /* Estilos para a célula combinada de bloco e taxa */
+    #block-info-cell {
+      flex-direction: column;
+      line-height: 1.2;
+    }
+    #block-height-value {
+      /* Tamanho da fonte herdado de .cell (3.45em) */
+    }
+    #fee-rate-value {
+      font-size: 0.55em; /* Mantido o tamanho original, NÃO aumentado */
+      margin-top: 8px;
+      color: #e0e0e0;
+    }
+
+    /* Estilos para BTC-USD (baseado no Placar Antigo) */
+    #btc-usd {
+      background-color: #141616; /* Fundo do container do placar */
+      padding: 0 3px;    /* Padding do container do placar */
+      border-radius: 0;   /* Borda do container do placar */
+      display: flex;         /* Para alinhar os dígitos e pontos */
+      gap: 1px;             /* Espaço entre os dígitos/pontos */
+      box-shadow: 0 6px 18px rgba(0, 0, 0, 0.4); /* Sombra do container */
+      font-family: 'Poppins', sans-serif; /* Fonte para os dígitos */
+      align-items: center;   /* Alinha verticalmente os itens */
+      justify-content: center; /* Centraliza o conteúdo do placar */
+      /* Sobrescreve o font-size de .cell, pois os dígitos têm tamanho próprio */
+      font-size: initial; /* Reseta o font-size herdado de .cell */
+      border: none; /* Remove a borda padrão de .cell */
+    }
+    .digit-box:not(:nth-child(3)):not(:nth-child(7)) {margin-right:6.5px!important;}
+
+    .digit-box { /* Renomeado de .digit para evitar conflito com possível tag <digit> */
+      background-color: #0B0A0F; /* Preto fosco */
+      color: white;
+      font-weight: 500;
+      font-size: 51px; /* Tamanho da fonte dos dígitos */
+      width: 45px;
+      height: 80px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      border-radius: 4px;
+      position: relative;
+      box-shadow:
+        0 0 0 1px #9d9c9c,   /* Borda branca interna */
+        0 0 0 2px #ad6218,   /* Borda laranja externa */
+        inset 0 4px 6px rgba(0,0,0,0.8),  /* Sombra superior interna */
+        inset 0 -4px 6px rgba(255,255,255,0.15); /* Brilho inferior interno */
+    }
+
+    .dot-separator-placar { /* Renomeado para evitar conflito com outros .dot */
+      color: #e0e0e0; /* Cor do ponto igual ao fundo do dígito */
+      font-size: 30px; /* Mesmo tamanho dos dígitos */
+      margin: 0 2px;   /* Espaçamento do ponto separador */
+      font-weight: 300;
+      line-height: 90px; /* Para alinhar verticalmente com os digit-box */
+      align-self: center;
+    }
+  </style>
+</head>
+<body>
+  <div class="cell" id="btc-usd">Carregando...</div>
+  <div class="cell green" id="usd-brl">Carregando...</div>
+  <div class="cell light-orange" id="btc-brl">Carregando...</div>
+  <div class="cell blue" id="block-info-cell">
+    <span id="block-height-value">Carregando...</span>
+    <span id="fee-rate-value"></span>
+  </div>
+
+  <script>
+    // Função auxiliar para lidar com as respostas do fetch de forma segura
+    function handleResponse(response) {
+      if (!response.ok) {
+        // Lança um erro para ser pego pelo .catch() da promise
+        throw new Error('Network response was not ok: ' + response.statusText);
+      }
+      // Para a API de block height, precisamos do texto, para as outras, JSON.
+      var contentType = response.headers.get("content-type");
+      if (contentType && contentType.indexOf("application/json") !== -1) {
+        return response.json();
+      } else {
+        return response.text();
+      }
+    }
+
+    // Função para buscar os dados, reescrita com Promises para compatibilidade
+    function fetchData() {
+      var btcPromise = fetch('https://api.binance.com/api/v3/ticker/price?symbol=BTCUSDT')
+        .then(handleResponse)
+        .then(function(json) { return parseFloat(json.price); })
+        .catch(function(e) {
+          console.error('Erro ao buscar BTC/USD:', e);
+          return null; // Retorna null em caso de erro
+        });
+
+      var usdbrlPromise = fetch('https://economia.awesomeapi.com.br/json/last/USD-BRL')
+        .then(handleResponse)
+        .then(function(data) {
+          if (data && data.USDBRL && data.USDBRL.bid) {
+            return parseFloat(data.USDBRL.bid);
+          }
+          throw new Error('Formato inesperado da resposta USD/BRL');
+        })
+        .catch(function(e) {
+          console.error('Erro ao buscar USD/BRL:', e);
+          return null;
+        });
+
+      var blockPromise = fetch('https://mempool.space/api/blocks/tip/height')
+        .then(handleResponse)
+        .then(function(text) {
+          var height = parseInt(text, 10);
+          if (isNaN(height)) {
+            throw new Error('Mempool API: Invalid block height format');
+          }
+          return height;
+        })
+        .catch(function(e) {
+          console.error('Erro ao buscar altura do bloco:', e);
+          return null;
+        });
+
+      var feePromise = fetch('https://mempool.space/api/v1/fees/recommended')
+        .then(handleResponse)
+        .then(function(json) {
+          if (json && typeof json.halfHourFee !== 'undefined') {
+            return Math.round(json.halfHourFee);
+          }
+          if (json && typeof json.fastestFee !== 'undefined') {
+            console.warn('halfHourFee não encontrada, usando fastestFee.');
+            return Math.round(json.fastestFee);
+          }
+          throw new Error('Taxas não encontradas na resposta da Mempool API');
+        })
+        .catch(function(e) {
+          console.error('Erro ao buscar taxas da rede:', e);
+          return null;
+        });
+
+      // Promise.all espera todas as buscas terminarem
+      return Promise.all([btcPromise, usdbrlPromise, blockPromise, feePromise])
+        .then(function(results) {
+          // Retorna um objeto com os resultados, similar ao original
+          return {
+            btcUsd: results[0],
+            usdBrl: results[1],
+            blockHeight: results[2],
+            currentFee: results[3]
+          };
+        });
+    }
+
+    function updateDOM(data) {
+      var btcUsdEl = document.getElementById('btc-usd');
+      if (data.btcUsd !== null) {
+        btcUsdEl.innerHTML = ''; // Limpa conteúdo anterior
+
+        var integerValue = Math.floor(data.btcUsd);
+        // Formata com separador de milhar (ponto para pt-BR) e sem casas decimais
+        var formattedNumberStr = integerValue.toLocaleString('pt-BR', {maximumFractionDigits: 0});
+
+        for (var i = 0; i < formattedNumberStr.length; i++) {
+          var char = formattedNumberStr[i];
+          if (char === '.') { // O separador de milhar do pt-BR é '.'
+            var dotEl = document.createElement('div');
+            dotEl.className = 'dot-separator-placar';
+            dotEl.textContent = '.';
+            btcUsdEl.appendChild(dotEl);
+          } else if (/\d/.test(char)) { // Se for um dígito
+            var digitBox = document.createElement('div');
+            digitBox.className = 'digit-box';
+            digitBox.textContent = char;
+            btcUsdEl.appendChild(digitBox);
+          }
+        }
+      } else {
+        // Mensagem de erro estilizada para o contexto do placar
+        btcUsdEl.innerHTML = '<span style="font-size: 24px; color: #ff4c4c; font-family: Poppins, sans-serif;">Erro</span>';
+      }
+
+      var usdBrlEl = document.getElementById('usd-brl');
+      if (data.usdBrl !== null) {
+        usdBrlEl.innerText = data.usdBrl.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      } else {
+        usdBrlEl.innerText = 'Erro';
+      }
+
+      var btcBrlEl = document.getElementById('btc-brl');
+      if (data.btcUsd !== null && data.usdBrl !== null) {
+        var btcBrl = data.btcUsd * data.usdBrl;
+        btcBrlEl.innerText = btcBrl.toLocaleString('pt-BR', { maximumFractionDigits: 0 });
+      } else {
+        btcBrlEl.innerText = 'Erro';
+      }
+
+      var blockHeightEl = document.getElementById('block-height-value');
+      var feeRateEl = document.getElementById('fee-rate-value');
+
+      if (data.blockHeight !== null) {
+        blockHeightEl.innerText = data.blockHeight.toLocaleString('pt-BR');
+      } else {
+        blockHeightEl.innerText = 'Erro Bloco';
+        blockHeightEl.style.fontSize = "0.8em";
+      }
+
+      if (data.currentFee !== null) {
+        feeRateEl.innerText = data.currentFee.toLocaleString('pt-BR') + ' sat/vB';
+      } else {
+        feeRateEl.innerText = 'Erro Taxa';
+      }
+
+      if(data.blockHeight === null && data.currentFee === null) {
+        blockHeightEl.innerText = 'Erro Dados';
+        blockHeightEl.style.fontSize = "";
+        feeRateEl.innerText = '';
+      }
+    }
+
+    function atualizar() {
+      // Define o estado de "Carregando..." antes de buscar os dados
+      document.getElementById('btc-usd').innerHTML = '<span style="font-size: 24px; color: #e0e0e0; font-family: Poppins, sans-serif;">Carregando...</span>';
+      document.getElementById('usd-brl').innerText = 'Carregando...';
+      document.getElementById('btc-brl').innerText = 'Carregando...';
+      document.getElementById('block-height-value').innerText = 'Carregando...';
+      document.getElementById('block-height-value').style.fontSize = "";
+      document.getElementById('fee-rate-value').innerText = '';
+
+      // Chama a busca de dados e atualiza o DOM quando terminar
+      fetchData().then(function(data) {
+        updateDOM(data);
+      });
+    }
+
+    // Inicia a primeira atualização e depois repete a cada 60 segundos
+    atualizar();
+    setInterval(atualizar, 60000);
+  </script>
+</body>
+</html>
