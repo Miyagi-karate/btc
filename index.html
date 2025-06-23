@@ -9,6 +9,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="theme-color" content="#000000"> <!-- Para navegadores Android, tenta deixar a barra de status preta -->
 
   <!-- Fontes: Poppins para o placar, Poppins (mantida caso queira reverter/usar em outro lugar) e sans-serif como fallback -->
    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@700&display=swap" rel="stylesheet">
@@ -82,9 +83,9 @@
       background-color: #0B0A0F; /* Preto fosco */
       color: white;
       font-weight: 500;
-      font-size: 51px; /* Tamanho da fonte dos dígitos */
-      width: 45px;
-      height: 80px;
+      font-size: 56px; /* Aumentado em 10% de 51px */
+      width: 50px; /* Aumentado em 10% de 45px */
+      height: 88px; /* Aumentado em 10% de 80px */
       display: flex;
       justify-content: center;
       align-items: center;
@@ -99,10 +100,10 @@
 
     .dot-separator-placar { /* Renomeado para evitar conflito com outros .dot */
       color: #e0e0e0; /* Cor do ponto igual ao fundo do dígito */
-      font-size: 30px; /* Mesmo tamanho dos dígitos */
+      font-size: 33px; /* Aumentado em 10% de 30px */
       margin: 0 2px;   /* Espaçamento do ponto separador */
       font-weight: 300;
-      line-height: 90px; /* Para alinhar verticalmente com os digit-box */
+      line-height: 99px; /* Para alinhar verticalmente com os digit-box (aumentado em 10% de 90px) */
       align-self: center;
     }
   </style>
@@ -132,9 +133,41 @@
       }
     }
 
+    // Nova função auxiliar para renderizar números com o estilo de dígitos do placar
+    function renderNumberAsDigits(element, number, options) {
+      if (number === null) {
+        // Mensagem de erro estilizada para o contexto do placar, com tamanho relativo
+        element.innerHTML = '<span style="font-size: 0.5em; color: #ff4c4c; font-family: Poppins, sans-serif; display: block; width: 100%; text-align: center;">Erro</span>';
+        return;
+      }
+
+      element.innerHTML = ''; // Limpa conteúdo anterior
+
+      // Garante que as opções para toLocaleString estejam definidas
+      var defaultOptions = { maximumFractionDigits: 0 }; // Padrão sem casas decimais
+      options = Object.assign({}, defaultOptions, options); // Mescla as opções
+
+      var formattedNumberStr = number.toLocaleString('pt-BR', options);
+
+      for (var i = 0; i < formattedNumberStr.length; i++) {
+        var char = formattedNumberStr[i];
+        if (char === '.' || char === ',') { // Lida com separadores de milhar (ponto) e decimal (vírgula)
+          var dotEl = document.createElement('div');
+          dotEl.className = 'dot-separator-placar';
+          dotEl.textContent = char; // Usa o caractere separador real
+          element.appendChild(dotEl);
+        } else if (/\d/.test(char)) { // Se for um dígito
+          var digitBox = document.createElement('div');
+          digitBox.className = 'digit-box';
+          digitBox.textContent = char;
+          element.appendChild(digitBox);
+        }
+      }
+    }
+
     // Função para buscar os dados, reescrita com Promises para compatibilidade
     function fetchData() {
-      // ALTERADO: Usando a API da CoinGecko para o preço do BTC
+      // Usando a API da CoinGecko para o preço do BTC
       var btcPromise = fetch('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd')
         .then(handleResponse)
         .then(function(json) {
@@ -207,77 +240,46 @@
 
     function updateDOM(data) {
       var btcUsdEl = document.getElementById('btc-usd');
-      if (data.btcUsd !== null) {
-        btcUsdEl.innerHTML = ''; // Limpa conteúdo anterior
-
-        var integerValue = Math.floor(data.btcUsd);
-        // Formata com separador de milhar (ponto para pt-BR) e sem casas decimais
-        var formattedNumberStr = integerValue.toLocaleString('pt-BR', {maximumFractionDigits: 0});
-
-        for (var i = 0; i < formattedNumberStr.length; i++) {
-          var char = formattedNumberStr[i];
-          if (char === '.') { // O separador de milhar do pt-BR é '.'
-            var dotEl = document.createElement('div');
-            dotEl.className = 'dot-separator-placar';
-            dotEl.textContent = '.';
-            btcUsdEl.appendChild(dotEl);
-          } else if (/\d/.test(char)) { // Se for um dígito
-            var digitBox = document.createElement('div');
-            digitBox.className = 'digit-box';
-            digitBox.textContent = char;
-            btcUsdEl.appendChild(digitBox);
-          }
-        }
-      } else {
-        // Mensagem de erro estilizada para o contexto do placar
-        btcUsdEl.innerHTML = '<span style="font-size: 24px; color: #ff4c4c; font-family: Poppins, sans-serif;">Erro</span>';
-      }
+      renderNumberAsDigits(btcUsdEl, data.btcUsd, { maximumFractionDigits: 0 }); // BTC-USD não precisa de decimais
 
       var usdBrlEl = document.getElementById('usd-brl');
-      if (data.usdBrl !== null) {
-        usdBrlEl.innerText = data.usdBrl.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-      } else {
-        usdBrlEl.innerText = 'Erro';
-      }
+      renderNumberAsDigits(usdBrlEl, data.usdBrl, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
       var btcBrlEl = document.getElementById('btc-brl');
       if (data.btcUsd !== null && data.usdBrl !== null) {
         var btcBrl = data.btcUsd * data.usdBrl;
-        btcBrlEl.innerText = btcBrl.toLocaleString('pt-BR', { maximumFractionDigits: 0 });
+        renderNumberAsDigits(btcBrlEl, btcBrl, { maximumFractionDigits: 0 });
       } else {
-        btcBrlEl.innerText = 'Erro';
+        // Se um dos valores for nulo, exibe erro no BTC/BRL
+        btcBrlEl.innerHTML = '<span style="font-size: 0.5em; color: #ff4c4c; font-family: Poppins, sans-serif; display: block; width: 100%; text-align: center;">Erro</span>';
       }
 
       var blockHeightEl = document.getElementById('block-height-value');
       var feeRateEl = document.getElementById('fee-rate-value');
 
-      if (data.blockHeight !== null) {
-        blockHeightEl.innerText = data.blockHeight.toLocaleString('pt-BR');
-      } else {
-        blockHeightEl.innerText = 'Erro Bloco';
-        blockHeightEl.style.fontSize = "0.8em";
-      }
+      // Altura do bloco usa o novo estilo de dígitos
+      renderNumberAsDigits(blockHeightEl, data.blockHeight, { maximumFractionDigits: 0 });
 
+      // Taxa da rede permanece como texto simples
       if (data.currentFee !== null) {
         feeRateEl.innerText = data.currentFee.toLocaleString('pt-BR') + ' sat/vB';
       } else {
         feeRateEl.innerText = 'Erro Taxa';
       }
-
-      if(data.blockHeight === null && data.currentFee === null) {
-        blockHeightEl.innerText = 'Erro Dados';
-        blockHeightEl.style.fontSize = "";
-        feeRateEl.innerText = '';
-      }
     }
 
     function atualizar() {
       // Define o estado de "Carregando..." antes de buscar os dados
-      document.getElementById('btc-usd').innerHTML = '<span style="font-size: 24px; color: #e0e0e0; font-family: Poppins, sans-serif;">Carregando...</span>';
-      document.getElementById('usd-brl').innerText = 'Carregando...';
-      document.getElementById('btc-brl').innerText = 'Carregando...';
-      document.getElementById('block-height-value').innerText = 'Carregando...';
-      document.getElementById('block-height-value').style.fontSize = "";
+      // Usa uma mensagem de "Carregando..." consistente para todas as células que usarão o estilo de dígitos
+      var loadingMessage = '<span style="font-size: 0.5em; color: #e0e0e0; font-family: Poppins, sans-serif; display: block; width: 100%; text-align: center;">Carregando...</span>';
+
+      document.getElementById('btc-usd').innerHTML = loadingMessage;
+      document.getElementById('usd-brl').innerHTML = loadingMessage;
+      document.getElementById('btc-brl').innerHTML = loadingMessage;
+      document.getElementById('block-height-value').innerHTML = loadingMessage;
+      document.getElementById('block-height-value').style.fontSize = ""; // Reseta o tamanho da fonte
+
+      // A taxa da rede permanece como texto simples, limpa durante o carregamento
       document.getElementById('fee-rate-value').innerText = '';
 
       // Chama a busca de dados e atualiza o DOM quando terminar
