@@ -134,9 +134,15 @@
 
     // Função para buscar os dados, reescrita com Promises para compatibilidade
     function fetchData() {
-      var btcPromise = fetch('https://api.binance.com/api/v3/ticker/price?symbol=BTCUSDT')
+      // ALTERADO: Usando a API da CoinGecko para o preço do BTC
+      var btcPromise = fetch('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd')
         .then(handleResponse)
-        .then(function(json) { return parseFloat(json.price); })
+        .then(function(json) {
+          if (json && json.bitcoin && typeof json.bitcoin.usd !== 'undefined') {
+            return parseFloat(json.bitcoin.usd);
+          }
+          throw new Error('Formato inesperado da resposta BTC/USD da CoinGecko');
+        })
         .catch(function(e) {
           console.error('Erro ao buscar BTC/USD:', e);
           return null; // Retorna null em caso de erro
