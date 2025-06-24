@@ -99,7 +99,7 @@
     </div>
 
     <div class="cell" id="block-info-cell">
-        <span class="title">Bloco</span> <!-- Título ajustado -->
+        <span class="title">Bloco</span>
         <div id="block-height" class="value-container">Carregando...</div>
     </div>
 
@@ -125,16 +125,33 @@
             xhr.send();
         }
 
-        // Função para formatar e exibir os números
+        // NOVA FUNÇÃO DE FORMATAÇÃO MANUAL
+        function formatarNumeroManualmente(numero, opcoes) {
+            if (numero === null || typeof numero === 'undefined') {
+                return 'Erro';
+            }
+
+            // Regra para USD/BRL (ex: 5,504)
+            if (opcoes && opcoes.minimumFractionDigits === 3) {
+                return numero.toFixed(3).replace('.', ',');
+            }
+
+            // Regra para os outros (inteiros com ponto de milhar, ex: 105.882)
+            var numeroInteiro = parseInt(numero, 10);
+            return numeroInteiro.toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+        }
+
+        // Função para exibir os valores, agora usando a formatação manual
         function renderValue(elementId, value, options) {
             var el = document.getElementById(elementId);
-            if (value === null || typeof value === 'undefined') {
-                el.textContent = 'Erro';
+            var textoFormatado = formatarNumeroManualmente(value, options);
+            
+            if (textoFormatado === 'Erro') {
                 el.style.color = '#ff4c4c';
             } else {
-                el.textContent = value.toLocaleString('pt-BR', options || {});
                 el.style.color = 'white';
             }
+            el.textContent = textoFormatado;
         }
 
         function atualizarDados() {
@@ -151,8 +168,7 @@
                 if (!err) {
                     try {
                         btcUsd = parseFloat(JSON.parse(btcData).bitcoin.usd);
-                        // Formatação: Pontuação de milhar, sem casas decimais (ex: 105.882)
-                        renderValue('btc-usd', btcUsd, { style: 'decimal', maximumFractionDigits: 0 });
+                        renderValue('btc-usd', btcUsd, { maximumFractionDigits: 0 });
                     } catch (e) {
                         renderValue('btc-usd', null);
                     }
@@ -165,8 +181,7 @@
                     if (!err) {
                         try {
                             usdBrl = parseFloat(JSON.parse(brlData).USDBRL.bid);
-                            // Formatação: 3 casas decimais com vírgula (ex: 5,504)
-                            renderValue('usd-brl', usdBrl, { style: 'decimal', minimumFractionDigits: 3, maximumFractionDigits: 3 });
+                            renderValue('usd-brl', usdBrl, { minimumFractionDigits: 3, maximumFractionDigits: 3 });
                         } catch (e) {
                             renderValue('usd-brl', null);
                         }
@@ -175,8 +190,7 @@
                     }
 
                     if (btcUsd !== null && usdBrl !== null) {
-                        // Formatação: Pontuação de milhar, sem casas decimais (ex: 582.904)
-                        renderValue('btc-brl', btcUsd * usdBrl, { style: 'decimal', maximumFractionDigits: 0 });
+                        renderValue('btc-brl', btcUsd * usdBrl, { maximumFractionDigits: 0 });
                     } else {
                         renderValue('btc-brl', null);
                     }
@@ -187,8 +201,7 @@
             
             makeRequest(blockUrl, function(err, blockData) {
                 if (!err) {
-                    // Formatação: Pontuação de milhar (ex: 902.544)
-                    renderValue('block-height', parseInt(blockData, 10), { style: 'decimal', maximumFractionDigits: 0 });
+                    renderValue('block-height', parseInt(blockData, 10), { maximumFractionDigits: 0 });
                 } else {
                     renderValue('block-height', null);
                 }
