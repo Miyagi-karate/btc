@@ -101,7 +101,6 @@
     <div class="cell" id="block-info-cell">
         <span class="title">Bloco</span> <!-- Título ajustado -->
         <div id="block-height" class="value-container">Carregando...</div>
-        <!-- O elemento da taxa de sat/vB foi removido -->
     </div>
 
     <script>
@@ -152,7 +151,8 @@
                 if (!err) {
                     try {
                         btcUsd = parseFloat(JSON.parse(btcData).bitcoin.usd);
-                        renderValue('btc-usd', btcUsd, { maximumFractionDigits: 0 });
+                        // Formatação: Pontuação de milhar, sem casas decimais (ex: 105.882)
+                        renderValue('btc-usd', btcUsd, { style: 'decimal', maximumFractionDigits: 0 });
                     } catch (e) {
                         renderValue('btc-usd', null);
                     }
@@ -165,7 +165,8 @@
                     if (!err) {
                         try {
                             usdBrl = parseFloat(JSON.parse(brlData).USDBRL.bid);
-                            renderValue('usd-brl', usdBrl, { minimumFractionDigits: 3, maximumFractionDigits: 3 });
+                            // Formatação: 3 casas decimais com vírgula (ex: 5,504)
+                            renderValue('usd-brl', usdBrl, { style: 'decimal', minimumFractionDigits: 3, maximumFractionDigits: 3 });
                         } catch (e) {
                             renderValue('usd-brl', null);
                         }
@@ -174,7 +175,8 @@
                     }
 
                     if (btcUsd !== null && usdBrl !== null) {
-                        renderValue('btc-brl', btcUsd * usdBrl, { maximumFractionDigits: 0 });
+                        // Formatação: Pontuação de milhar, sem casas decimais (ex: 582.904)
+                        renderValue('btc-brl', btcUsd * usdBrl, { style: 'decimal', maximumFractionDigits: 0 });
                     } else {
                         renderValue('btc-brl', null);
                     }
@@ -185,13 +187,12 @@
             
             makeRequest(blockUrl, function(err, blockData) {
                 if (!err) {
-                    renderValue('block-height', parseInt(blockData, 10));
+                    // Formatação: Pontuação de milhar (ex: 902.544)
+                    renderValue('block-height', parseInt(blockData, 10), { style: 'decimal', maximumFractionDigits: 0 });
                 } else {
                     renderValue('block-height', null);
                 }
             }, false);
-
-            // A requisição para a taxa de sat/vB foi removida
         }
 
         atualizarDados();
