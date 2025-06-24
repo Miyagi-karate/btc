@@ -61,14 +61,14 @@
             font-family: 'Poppins', sans-serif;
             font-weight: bold;
             color: white;
-            font-size: 2em; /* Tamanho base para os valores */
+            font-size: 1.5em; /* Tamanho reduzido em 50% (era 2em) */
         }
 
-        /* Estilos específicos para cada célula */
-        #btc-usd-cell { background-color: #1c2a4d; }
-        #usd-brl-cell { background-color: #1c3d3d; }
-        #btc-brl-cell { background-color: #4d1c1c; }
-        #block-info-cell { background-color: #3d1c4d; }
+        /* Cores de fundo intercaladas */
+        #btc-usd-cell { background-color: #000000; } /* Preto */
+        #usd-brl-cell { background-color: #1c1c1c; } /* Cinza escuro */
+        #btc-brl-cell { background-color: #000000; } /* Preto */
+        #block-info-cell { background-color: #1c1c1c; } /* Cinza escuro */
 
         #block-info-cell {
             -webkit-flex-direction: column; /* Compatibilidade Safari antigo */
@@ -76,7 +76,7 @@
         }
 
         #fee-rate-value {
-            font-size: 0.6em; /* Tamanho menor para a taxa */
+            font-size: 0.6em; /* Tamanho menor para a taxa (não foi alterado) */
             color: #e0e0e0;
             margin-top: 5px;
             font-weight: normal;
@@ -85,7 +85,7 @@
         /* Media query para telas menores */
         @media (max-width: 600px) {
             .value-container {
-                font-size: 1.5em;
+                font-size: 1.2em; /* Tamanho ajustado para telas menores */
             }
             .title {
                 font-size: 0.7em;
@@ -120,19 +120,16 @@
         // Função para fazer requisições web compatível com navegadores antigos
         function makeRequest(url, callback, useProxy) {
             var finalUrl = url;
-            // Usamos corsproxy.io que retorna o conteúdo direto
             if (useProxy) {
                 finalUrl = 'https://corsproxy.io/?' + encodeURIComponent(url);
             }
 
             var xhr = new XMLHttpRequest();
             xhr.onreadystatechange = function() {
-                if (xhr.readyState === 4) { // Requisição completa
-                    if (xhr.status === 200) { // Sucesso
-                        var responseText = xhr.responseText;
-                        // Com corsproxy.io, o responseText já é o conteúdo que precisamos
-                        callback(null, responseText);
-                    } else { // Erro
+                if (xhr.readyState === 4) {
+                    if (xhr.status === 200) {
+                        callback(null, xhr.responseText);
+                    } else {
                         callback(new Error('Erro na requisição: ' + xhr.status));
                     }
                 }
@@ -154,14 +151,12 @@
         }
 
         function atualizarDados() {
-            // Exibe "Carregando..." em todas as células
             document.getElementById('btc-usd').textContent = '...';
             document.getElementById('usd-brl').textContent = '...';
             document.getElementById('btc-brl').textContent = '...';
             document.getElementById('block-height').textContent = '...';
             document.getElementById('fee-rate-value').textContent = '';
 
-            // --- Requisições que estavam falhando agora usam o novo proxy ---
             var btcUrl = 'https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd';
             var brlUrl = 'https://economia.awesomeapi.com.br/json/last/USD-BRL';
 
@@ -169,8 +164,8 @@
                 var btcUsd = null;
                 if (!err) {
                     try {
-                        // Agora btcData já é o JSON puro, sem o "contents"
                         btcUsd = parseFloat(JSON.parse(btcData).bitcoin.usd);
+                        // Formatação: Pontuação de milhar, sem casas decimais
                         renderValue('btc-usd', btcUsd, { maximumFractionDigits: 0 });
                     } catch (e) {
                         renderValue('btc-usd', null);
@@ -179,14 +174,13 @@
                     renderValue('btc-usd', null);
                 }
 
-                // Aninhamos a segunda chamada para garantir que temos o valor de btcUsd
                 makeRequest(brlUrl, function(err, brlData) {
                     var usdBrl = null;
                     if (!err) {
                         try {
-                            // Agora brlData já é o JSON puro, sem o "contents"
                             usdBrl = parseFloat(JSON.parse(brlData).USDBRL.bid);
-                            renderValue('usd-brl', usdBrl, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                            // Formatação: 3 casas decimais
+                            renderValue('usd-brl', usdBrl, { minimumFractionDigits: 3, maximumFractionDigits: 3 });
                         } catch (e) {
                             renderValue('usd-brl', null);
                         }
@@ -194,26 +188,26 @@
                         renderValue('usd-brl', null);
                     }
 
-                    // Calcula e exibe BTC/BRL
                     if (btcUsd !== null && usdBrl !== null) {
+                        // Formatação: Pontuação de milhar, sem casas decimais
                         renderValue('btc-brl', btcUsd * usdBrl, { maximumFractionDigits: 0 });
                     } else {
                         renderValue('btc-brl', null);
                     }
-                }, true); // O 'true' aqui ativa o proxy para esta chamada
-            }, true); // E aqui também ativa o proxy
+                }, true);
+            }, true);
 
-            // --- Requisições que já funcionavam continuam diretas ---
             var blockUrl = 'https://mempool.space/api/blocks/tip/height';
             var feeUrl = 'https://mempool.space/api/v1/fees/recommended';
 
             makeRequest(blockUrl, function(err, blockData) {
                 if (!err) {
+                    // Formatação: Pontuação de milhar (automática para inteiros)
                     renderValue('block-height', parseInt(blockData, 10));
                 } else {
                     renderValue('block-height', null);
                 }
-            }, false); // 'false' ou omitido para não usar o proxy
+            }, false);
 
             makeRequest(feeUrl, function(err, feeData) {
                 var feeEl = document.getElementById('fee-rate-value');
@@ -230,7 +224,6 @@
             }, false);
         }
 
-        // Inicia a primeira atualização e depois atualiza a cada 60 segundos
         atualizarDados();
         setInterval(atualizarDados, 60000);
     </script>
