@@ -61,7 +61,7 @@
             font-family: 'Poppins', sans-serif;
             font-weight: bold;
             color: white;
-            font-size: 1.5em; /* Tamanho reduzido em 50% (era 2em) */
+            font-size: 7.5em; /* Aumentado 500% */
         }
 
         /* Cores de fundo intercaladas */
@@ -70,22 +70,10 @@
         #btc-brl-cell { background-color: #000000; } /* Preto */
         #block-info-cell { background-color: #1c1c1c; } /* Cinza escuro */
 
-        #block-info-cell {
-            -webkit-flex-direction: column; /* Compatibilidade Safari antigo */
-            flex-direction: column;
-        }
-
-        #fee-rate-value {
-            font-size: 0.6em; /* Tamanho menor para a taxa (não foi alterado) */
-            color: #e0e0e0;
-            margin-top: 5px;
-            font-weight: normal;
-        }
-
         /* Media query para telas menores */
         @media (max-width: 600px) {
             .value-container {
-                font-size: 1.2em; /* Tamanho ajustado para telas menores */
+                font-size: 6.0em; /* Aumentado 500% */
             }
             .title {
                 font-size: 0.7em;
@@ -111,9 +99,9 @@
     </div>
 
     <div class="cell" id="block-info-cell">
-        <span class="title">Bloco / Taxa</span>
+        <span class="title">Bloco</span> <!-- Título ajustado -->
         <div id="block-height" class="value-container">Carregando...</div>
-        <span id="fee-rate-value"></span>
+        <!-- O elemento da taxa de sat/vB foi removido -->
     </div>
 
     <script>
@@ -155,7 +143,6 @@
             document.getElementById('usd-brl').textContent = '...';
             document.getElementById('btc-brl').textContent = '...';
             document.getElementById('block-height').textContent = '...';
-            document.getElementById('fee-rate-value').textContent = '';
 
             var btcUrl = 'https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd';
             var brlUrl = 'https://economia.awesomeapi.com.br/json/last/USD-BRL';
@@ -165,7 +152,6 @@
                 if (!err) {
                     try {
                         btcUsd = parseFloat(JSON.parse(btcData).bitcoin.usd);
-                        // Formatação: Pontuação de milhar, sem casas decimais
                         renderValue('btc-usd', btcUsd, { maximumFractionDigits: 0 });
                     } catch (e) {
                         renderValue('btc-usd', null);
@@ -179,7 +165,6 @@
                     if (!err) {
                         try {
                             usdBrl = parseFloat(JSON.parse(brlData).USDBRL.bid);
-                            // Formatação: 3 casas decimais
                             renderValue('usd-brl', usdBrl, { minimumFractionDigits: 3, maximumFractionDigits: 3 });
                         } catch (e) {
                             renderValue('usd-brl', null);
@@ -189,7 +174,6 @@
                     }
 
                     if (btcUsd !== null && usdBrl !== null) {
-                        // Formatação: Pontuação de milhar, sem casas decimais
                         renderValue('btc-brl', btcUsd * usdBrl, { maximumFractionDigits: 0 });
                     } else {
                         renderValue('btc-brl', null);
@@ -198,30 +182,16 @@
             }, true);
 
             var blockUrl = 'https://mempool.space/api/blocks/tip/height';
-            var feeUrl = 'https://mempool.space/api/v1/fees/recommended';
-
+            
             makeRequest(blockUrl, function(err, blockData) {
                 if (!err) {
-                    // Formatação: Pontuação de milhar (automática para inteiros)
                     renderValue('block-height', parseInt(blockData, 10));
                 } else {
                     renderValue('block-height', null);
                 }
             }, false);
 
-            makeRequest(feeUrl, function(err, feeData) {
-                var feeEl = document.getElementById('fee-rate-value');
-                if (!err) {
-                    try {
-                        var fastestFee = JSON.parse(feeData).fastestFee;
-                        feeEl.textContent = fastestFee + ' sat/vB';
-                    } catch (e) {
-                        feeEl.textContent = 'Erro Taxa';
-                    }
-                } else {
-                    feeEl.textContent = 'Erro Taxa';
-                }
-            }, false);
+            // A requisição para a taxa de sat/vB foi removida
         }
 
         atualizarDados();
