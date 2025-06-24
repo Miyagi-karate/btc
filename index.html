@@ -118,18 +118,35 @@
 
     <script>
         // Função para fazer requisições web compatível com navegadores antigos
-        function makeRequest(url, callback) {
+        function makeRequest(url, callback, useProxy) {
+            var finalUrl = url;
+            // O proxy envolve a URL original
+            if (useProxy) {
+                finalUrl = 'https://api.allorigins.win/get?url=' + encodeURIComponent(url);
+            }
+
             var xhr = new XMLHttpRequest();
             xhr.onreadystatechange = function() {
                 if (xhr.readyState === 4) { // Requisição completa
                     if (xhr.status === 200) { // Sucesso
-                        callback(null, xhr.responseText);
+                        var responseText = xhr.responseText;
+                        // Se usamos o proxy, precisamos extrair o conteúdo real
+                        if (useProxy) {
+                            try {
+                                var parsedResponse = JSON.parse(responseText);
+                                callback(null, parsedResponse.contents);
+                            } catch (e) {
+                                callback(new Error('Erro ao processar resposta do proxy.'));
+                            }
+                        } else {
+                            callback(null, responseText);
+                        }
                     } else { // Erro
                         callback(new Error('Erro na requisição: ' + xhr.status));
                     }
                 }
             };
-            xhr.open('GET', url, true);
+            xhr.open('GET', finalUrl, true);
             xhr.send();
         }
 
@@ -153,8 +170,11 @@
             document.getElementById('block-height').textContent = '...';
             document.getElementById('fee-rate-value').textContent = '';
 
-            // Inicia a cadeia de requisições
-            makeRequest('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd', function(err, btcData) {
+            // --- Requisições que estavam falhando agora usam o proxy ---
+            var btcUrl = 'https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd';
+            var brlUrl = 'https://economia.awesomeapi.com.br/json/last/USD-BRL';
+
+            makeRequest(btcUrl, function(err, btcData) {
                 var btcUsd = null;
                 if (!err) {
                     try {
@@ -167,7 +187,8 @@
                     renderValue('btc-usd', null);
                 }
 
-                makeRequest('https://economia.awesomeapi.com.br/json/last/USD-BRL', function(err, brlData) {
+                // Aninhamos a segunda chamada para garantir que temos o valor de btcUsd
+                makeRequest(brlUrl, function(err, brlData) {
                     var usdBrl = null;
                     if (!err) {
                         try {
@@ -186,18 +207,22 @@
                     } else {
                         renderValue('btc-brl', null);
                     }
-                });
-            });
+                }, true); // O 'true' aqui ativa o proxy para esta chamada
+            }, true); // E aqui também ativa o proxy
 
-            makeRequest('https://mempool.space/api/blocks/tip/height', function(err, blockData) {
+            // --- Requisições que já funcionavam continuam diretas ---
+            var blockUrl = 'https://mempool.space/api/blocks/tip/height';
+            var feeUrl = 'https://mempool.space/api/v1/fees/recommended';
+
+            makeRequest(blockUrl, function(err, blockData) {
                 if (!err) {
                     renderValue('block-height', parseInt(blockData, 10));
                 } else {
                     renderValue('block-height', null);
                 }
-            });
+            }, false); // 'false' ou omitido para não usar o proxy
 
-            makeRequest('https://mempool.space/api/v1/fees/recommended', function(err, feeData) {
+            makeRequest(feeUrl, function(err, feeData) {
                 var feeEl = document.getElementById('fee-rate-value');
                 if (!err) {
                     try {
@@ -209,7 +234,7 @@
                 } else {
                     feeEl.textContent = 'Erro Taxa';
                 }
-            });
+            }, false);
         }
 
         // Inicia a primeira atualização e depois atualiza a cada 60 segundos
