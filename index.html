@@ -120,9 +120,9 @@
         // Função para fazer requisições web compatível com navegadores antigos
         function makeRequest(url, callback, useProxy) {
             var finalUrl = url;
-            // O proxy envolve a URL original
+            // Usamos corsproxy.io que retorna o conteúdo direto
             if (useProxy) {
-                finalUrl = 'https://api.allorigins.win/get?url=' + encodeURIComponent(url);
+                finalUrl = 'https://corsproxy.io/?' + encodeURIComponent(url);
             }
 
             var xhr = new XMLHttpRequest();
@@ -130,17 +130,8 @@
                 if (xhr.readyState === 4) { // Requisição completa
                     if (xhr.status === 200) { // Sucesso
                         var responseText = xhr.responseText;
-                        // Se usamos o proxy, precisamos extrair o conteúdo real
-                        if (useProxy) {
-                            try {
-                                var parsedResponse = JSON.parse(responseText);
-                                callback(null, parsedResponse.contents);
-                            } catch (e) {
-                                callback(new Error('Erro ao processar resposta do proxy.'));
-                            }
-                        } else {
-                            callback(null, responseText);
-                        }
+                        // Com corsproxy.io, o responseText já é o conteúdo que precisamos
+                        callback(null, responseText);
                     } else { // Erro
                         callback(new Error('Erro na requisição: ' + xhr.status));
                     }
@@ -170,7 +161,7 @@
             document.getElementById('block-height').textContent = '...';
             document.getElementById('fee-rate-value').textContent = '';
 
-            // --- Requisições que estavam falhando agora usam o proxy ---
+            // --- Requisições que estavam falhando agora usam o novo proxy ---
             var btcUrl = 'https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd';
             var brlUrl = 'https://economia.awesomeapi.com.br/json/last/USD-BRL';
 
@@ -178,7 +169,8 @@
                 var btcUsd = null;
                 if (!err) {
                     try {
-                        btcUsd = JSON.parse(btcData).bitcoin.usd;
+                        // Agora btcData já é o JSON puro, sem o "contents"
+                        btcUsd = parseFloat(JSON.parse(btcData).bitcoin.usd);
                         renderValue('btc-usd', btcUsd, { maximumFractionDigits: 0 });
                     } catch (e) {
                         renderValue('btc-usd', null);
@@ -192,6 +184,7 @@
                     var usdBrl = null;
                     if (!err) {
                         try {
+                            // Agora brlData já é o JSON puro, sem o "contents"
                             usdBrl = parseFloat(JSON.parse(brlData).USDBRL.bid);
                             renderValue('usd-brl', usdBrl, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
                         } catch (e) {
