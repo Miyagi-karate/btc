@@ -1,121 +1,221 @@
 <!DOCTYPE html>
-<html>
+<html lang="pt-BR">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-  <title>BTC Painel iOS 9</title>
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="theme-color" content="#000000">
-  <style>
-    html, body {
-      margin: 0;
-      padding: 0;
-      background-color: #000;
-      color: white;
-      font-family: sans-serif;
-      width: 100vw;
-      height: 100vh;
-      overflow: hidden;
-    }
-    .cell {
-      height: 25%;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      border: 1px solid #222;
-      font-size: 30px;
-    }
-    #fee-rate-value {
-      font-size: 16px;
-      color: #e0e0e0;
-      font-weight: bold;
-    }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Painel BTC</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        /* Reset Básico */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Poppins', sans-serif;
+            background-color: #0d1117;
+            color: #c9d1d9;
+            margin: 0;
+            padding: 0;
+            display: -webkit-flex; /* Compatibilidade Safari antigo */
+            display: flex;
+            -webkit-flex-direction: column; /* Compatibilidade Safari antigo */
+            flex-direction: column;
+            height: 100vh;
+        }
+
+        .cell {
+            -webkit-flex: 1; /* Compatibilidade Safari antigo */
+            flex: 1;
+            display: -webkit-flex; /* Compatibilidade Safari antigo */
+            display: flex;
+            -webkit-align-items: center; /* Compatibilidade Safari antigo */
+            align-items: center;
+            -webkit-justify-content: center; /* Compatibilidade Safari antigo */
+            justify-content: center;
+            text-align: center;
+            border-bottom: 1px solid #30363d;
+            padding: 10px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .cell:last-child {
+            border-bottom: none;
+        }
+
+        .title {
+            position: absolute;
+            top: 5px;
+            left: 10px;
+            font-size: 0.8em;
+            color: #8b949e;
+            font-weight: normal;
+        }
+
+        .value-container {
+            font-family: 'Poppins', sans-serif;
+            font-weight: bold;
+            color: white;
+            font-size: 2em; /* Tamanho base para os valores */
+        }
+
+        /* Estilos específicos para cada célula */
+        #btc-usd-cell { background-color: #1c2a4d; }
+        #usd-brl-cell { background-color: #1c3d3d; }
+        #btc-brl-cell { background-color: #4d1c1c; }
+        #block-info-cell { background-color: #3d1c4d; }
+
+        #block-info-cell {
+            -webkit-flex-direction: column; /* Compatibilidade Safari antigo */
+            flex-direction: column;
+        }
+
+        #fee-rate-value {
+            font-size: 0.6em; /* Tamanho menor para a taxa */
+            color: #e0e0e0;
+            margin-top: 5px;
+            font-weight: normal;
+        }
+
+        /* Media query para telas menores */
+        @media (max-width: 600px) {
+            .value-container {
+                font-size: 1.5em;
+            }
+            .title {
+                font-size: 0.7em;
+            }
+        }
+    </style>
 </head>
 <body>
-  <div class="cell" id="btc-usd">Carregando...</div>
-  <div class="cell" id="usd-brl">Carregando...</div>
-  <div class="cell" id="btc-brl">Carregando...</div>
-  <div class="cell" id="block-cell">
-    <div id="block-height">Carregando...</div>
-    <div id="fee-rate-value"></div>
-  </div>
 
-  <script>
-    function getJSON(url, callback) {
-      var xhr = new XMLHttpRequest();
-      xhr.onreadystatechange = function() {
-        if (xhr.readyState === 4) {
-          if (xhr.status === 200) {
-            try {
-              var data = JSON.parse(xhr.responseText);
-              callback(null, data);
-            } catch (e) {
-              callback(e);
+    <div class="cell" id="btc-usd-cell">
+        <span class="title">BTC/USD</span>
+        <div id="btc-usd" class="value-container">Carregando...</div>
+    </div>
+
+    <div class="cell" id="usd-brl-cell">
+        <span class="title">USD/BRL</span>
+        <div id="usd-brl" class="value-container">Carregando...</div>
+    </div>
+
+    <div class="cell" id="btc-brl-cell">
+        <span class="title">BTC/BRL</span>
+        <div id="btc-brl" class="value-container">Carregando...</div>
+    </div>
+
+    <div class="cell" id="block-info-cell">
+        <span class="title">Bloco / Taxa</span>
+        <div id="block-height" class="value-container">Carregando...</div>
+        <span id="fee-rate-value"></span>
+    </div>
+
+    <script>
+        // Função para fazer requisições web compatível com navegadores antigos
+        function makeRequest(url, callback) {
+            var xhr = new XMLHttpRequest();
+            xhr.onreadystatechange = function() {
+                if (xhr.readyState === 4) { // Requisição completa
+                    if (xhr.status === 200) { // Sucesso
+                        callback(null, xhr.responseText);
+                    } else { // Erro
+                        callback(new Error('Erro na requisição: ' + xhr.status));
+                    }
+                }
+            };
+            xhr.open('GET', url, true);
+            xhr.send();
+        }
+
+        // Função para formatar e exibir os números
+        function renderValue(elementId, value, options) {
+            var el = document.getElementById(elementId);
+            if (value === null || typeof value === 'undefined') {
+                el.textContent = 'Erro';
+                el.style.color = '#ff4c4c';
+            } else {
+                el.textContent = value.toLocaleString('pt-BR', options || {});
+                el.style.color = 'white';
             }
-          } else {
-            callback(new Error('Erro HTTP: ' + xhr.status));
-          }
         }
-      };
-      xhr.open('GET', url, true);
-      xhr.send();
-    }
 
-    function getText(url, callback) {
-      var xhr = new XMLHttpRequest();
-      xhr.onreadystatechange = function() {
-        if (xhr.readyState === 4) {
-          if (xhr.status === 200) {
-            callback(null, xhr.responseText);
-          } else {
-            callback(new Error('Erro HTTP: ' + xhr.status));
-          }
+        function atualizarDados() {
+            // Exibe "Carregando..." em todas as células
+            document.getElementById('btc-usd').textContent = '...';
+            document.getElementById('usd-brl').textContent = '...';
+            document.getElementById('btc-brl').textContent = '...';
+            document.getElementById('block-height').textContent = '...';
+            document.getElementById('fee-rate-value').textContent = '';
+
+            // Inicia a cadeia de requisições
+            makeRequest('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd', function(err, btcData) {
+                var btcUsd = null;
+                if (!err) {
+                    try {
+                        btcUsd = JSON.parse(btcData).bitcoin.usd;
+                        renderValue('btc-usd', btcUsd, { maximumFractionDigits: 0 });
+                    } catch (e) {
+                        renderValue('btc-usd', null);
+                    }
+                } else {
+                    renderValue('btc-usd', null);
+                }
+
+                makeRequest('https://economia.awesomeapi.com.br/json/last/USD-BRL', function(err, brlData) {
+                    var usdBrl = null;
+                    if (!err) {
+                        try {
+                            usdBrl = parseFloat(JSON.parse(brlData).USDBRL.bid);
+                            renderValue('usd-brl', usdBrl, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                        } catch (e) {
+                            renderValue('usd-brl', null);
+                        }
+                    } else {
+                        renderValue('usd-brl', null);
+                    }
+
+                    // Calcula e exibe BTC/BRL
+                    if (btcUsd !== null && usdBrl !== null) {
+                        renderValue('btc-brl', btcUsd * usdBrl, { maximumFractionDigits: 0 });
+                    } else {
+                        renderValue('btc-brl', null);
+                    }
+                });
+            });
+
+            makeRequest('https://mempool.space/api/blocks/tip/height', function(err, blockData) {
+                if (!err) {
+                    renderValue('block-height', parseInt(blockData, 10));
+                } else {
+                    renderValue('block-height', null);
+                }
+            });
+
+            makeRequest('https://mempool.space/api/v1/fees/recommended', function(err, feeData) {
+                var feeEl = document.getElementById('fee-rate-value');
+                if (!err) {
+                    try {
+                        var fastestFee = JSON.parse(feeData).fastestFee;
+                        feeEl.textContent = fastestFee + ' sat/vB';
+                    } catch (e) {
+                        feeEl.textContent = 'Erro Taxa';
+                    }
+                } else {
+                    feeEl.textContent = 'Erro Taxa';
+                }
+            });
         }
-      };
-      xhr.open('GET', url, true);
-      xhr.send();
-    }
 
-    function atualizar() {
-      document.getElementById('btc-usd').textContent = 'Carregando...';
-      document.getElementById('usd-brl').textContent = 'Carregando...';
-      document.getElementById('btc-brl').textContent = 'Carregando...';
-      document.getElementById('block-height').textContent = 'Carregando...';
-      document.getElementById('fee-rate-value').textContent = '';
+        // Inicia a primeira atualização e depois atualiza a cada 60 segundos
+        atualizarDados();
+        setInterval(atualizarDados, 60000);
+    </script>
 
-      getJSON('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd', function(err, data1) {
-        var btcUsd = (!err && data1.bitcoin && data1.bitcoin.usd) ? parseFloat(data1.bitcoin.usd) : null;
-        document.getElementById('btc-usd').textContent = btcUsd ? 'BTC/USD: $' + btcUsd : 'Erro BTC';
-
-        getJSON('https://economia.awesomeapi.com.br/json/last/USD-BRL', function(err2, data2) {
-          var usdBrl = (!err2 && data2.USDBRL && data2.USDBRL.bid) ? parseFloat(data2.USDBRL.bid) : null;
-          document.getElementById('usd-brl').textContent = usdBrl ? 'USD/BRL: R$ ' + usdBrl.toFixed(2) : 'Erro USD';
-
-          if (btcUsd && usdBrl) {
-            var btcBrl = btcUsd * usdBrl;
-            document.getElementById('btc-brl').textContent = 'BTC/BRL: R$ ' + Math.round(btcBrl);
-          } else {
-            document.getElementById('btc-brl').textContent = 'Erro BRL';
-          }
-        });
-      });
-
-      getText('https://mempool.space/api/blocks/tip/height', function(err3, text) {
-        var height = (!err3 && !isNaN(parseInt(text, 10))) ? parseInt(text, 10) : null;
-        document.getElementById('block-height').textContent = height ? 'Bloco: ' + height : 'Erro bloco';
-      });
-
-      getJSON('https://mempool.space/api/v1/fees/recommended', function(err4, data4) {
-        var fee = (!err4 && data4.halfHourFee) ? parseInt(data4.halfHourFee, 10) : null;
-        document.getElementById('fee-rate-value').textContent = fee ? fee + ' sat/vB' : 'Erro taxa';
-      });
-    }
-
-    atualizar();
-    setInterval(atualizar, 60000);
-  </script>
 </body>
 </html>
