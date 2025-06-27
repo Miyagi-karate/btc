@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#000000">
     <title>Painel BTC</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -62,6 +63,10 @@
             font-weight: bold;
             color: white;
             font-size: 7.5em; /* Aumentado 500% */
+        }
+
+        .small-digit {
+            font-size: 0.75em; /* 75% do tamanho da fonte pai */
         }
 
         /* Cores de fundo intercaladas */
@@ -144,14 +149,26 @@
         // Função para exibir os valores, agora usando a formatação manual
         function renderValue(elementId, value, options) {
             var el = document.getElementById(elementId);
+            if (!el) return;
+
             var textoFormatado = formatarNumeroManualmente(value, options);
-            
+
             if (textoFormatado === 'Erro') {
+                el.innerHTML = 'Erro';
                 el.style.color = '#ff4c4c';
-            } else {
-                el.style.color = 'white';
+                return;
             }
-            el.textContent = textoFormatado;
+            
+            el.style.color = 'white';
+
+            // Lógica especial para USD/BRL para estilizar o último dígito
+            if (elementId === 'usd-brl' && options && options.minimumFractionDigits === 3) {
+                var mainPart = textoFormatado.slice(0, -1);
+                var lastDigit = textoFormatado.slice(-1);
+                el.innerHTML = mainPart + '<span class="small-digit">' + lastDigit + '</span>';
+            } else {
+                el.innerHTML = textoFormatado;
+            }
         }
 
         function atualizarDados() {
